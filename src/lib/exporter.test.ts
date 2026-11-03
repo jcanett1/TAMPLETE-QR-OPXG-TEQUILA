@@ -3,8 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { createArticle, defaultSettings, qrPayload, validateArticle, type Article, type LabelSettings } from './model';
 import { buildWordDocument, qrDataUrl } from './exporter';
 
-type ZipFile = { name: string; data: Buffer };
-
 function unzip(buffer: Buffer): Map<string, Buffer> {
   const files = new Map<string, Buffer>();
   const eocdSignature = Buffer.from([0x50, 0x4b, 0x05, 0x06]);
@@ -45,10 +43,7 @@ function article(index: number): Article {
     partNumber: `PART-${String(index).padStart(2, '0')}`,
     description: `Descripción del artículo ${index}`,
     location: `RACK-${index}`,
-    quantity: 100 + index,
-    po: `PO-${index}`,
     date: '2026-11-03',
-    fifo: 900 + index,
   });
 }
 
@@ -66,16 +61,22 @@ function count(xml: string, expression: RegExp): number {
   return xml.match(expression)?.length ?? 0;
 }
 
+function expectNoRemovedFields(xml: string): void {
+  expect(xml).not.toMatch(/FIFO|INV\. ID|QTY|PO-LEGACY|quantity|fifo|&quot;po&quot;/);
+}
+
 describe('exporter', () => {
-  it('returns a PNG QR data URL whose payload follows qrPayload', async () => {
+  it('returns a PNG QR data URL whose payload follows the simplified model', async () => {
     const item = article(1);
     const dataUrl = await qrDataUrl(item, 'all');
     expect(dataUrl).toMatch(/^data:image\/png;base64,/);
     const png = Buffer.from(dataUrl.slice('data:image/png;base64,'.length), 'base64');
     expect(png.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
-    expect(qrPayload(item, 'all')).toContain('"partNumber":"PART-01"');
-    expect(qrPayload(item, 'all')).toContain('"fifo":901');
-    expect(qrPayload(item, 'partLocation')).toContain('"quantity":101');
+    expect(JSON.parse(qrPayload(item, 'partNumber'))).toEqual({ partNumber: 'PART-01' });
+    expect(JSON.parse(qrPayload(item, 'partLocation'))).toEqual({ partNumber: 'PART-01', location: 'RACK-1' });
+    expect(JSON.parse(qrPayload(item, 'all'))).toEqual({
+      partNumber: 'PART-01', description: 'Descripción del artículo 1', location: 'RACK-1', date: '2026-11-03',
+    });
   });
 
   it('writes Letter geometry, eight fixed cells, and empty bordered cells', async () => {
@@ -92,11 +93,11 @@ describe('exporter', () => {
     expect(count(xml, /<w:cantSplit\b/g)).toBe(8);
     expect(count(xml, /<w:tblLayout[^>]*w:type="fixed"/g)).toBe(2);
     expect(count(xml, /<w:tcBorders\b/g)).toBe(16);
+    expectNoRemovedFields(xml);
   });
 
-  it('writes A4 large pages and preserves all visible article data', async () => {
-    const item = article(1);
-    const files = await documentFiles(await buildWordDocument([item], settings({ format: 'large', paper: 'a4', fifoStart: 42 })));
+  it('writes A4 large pages and preserves the remaining visible article data', async () => {
+    const files = await documentFiles(await buildWordDocument([article(1)], settings({ format: 'large', paper: 'a4' })));
     const xml = xmlFrom(files);
     expect(xml).toContain('w:w="11905"');
     expect(xml).toContain('w:h="16837"');
@@ -105,38 +106,42 @@ describe('exporter', () => {
     expect(count(xml, /<w:tc(?:\s|>)/g)).toBe(3);
     expect(xml).toContain('PART-01');
     expect(xml).toContain('Descripción del artículo 1');
-    expect(xml).toContain('INV. ID: 42');
     expect(xml).toContain('LOCATION: RACK-1');
     expect(xml).toContain('2026-11-03');
-    expect(xml).toContain('PO-1');
-    expect(xml).toContain('QTY 101');
-    expect(xml).toContain('FIFO 42');
     expect(xml.indexOf('PART-01')).toBeLessThan(xml.indexOf('<w:drawing>'));
     expect(xml.indexOf('LOCATION: RACK-1')).toBeLessThan(xml.indexOf('<w:drawing>'));
-    expect(xml).toContain('w:line="226"');
+    expectNoRemovedFields(xml);
   });
 
-  it('numbers labels from fifoStart and embeds one PNG per article, not per quantity', async () => {
-    const items = [article(1), article(2)];
-    items[0].quantity = 1000000;
-    items[1].quantity = 2;
-    const files = await documentFiles(await buildWordDocument(items, settings({ fifoStart: 7 })));
+  it('embeds one PNG per article and no inventory sequence', async () => {
+    const files = await documentFiles(await buildWordDocument([article(1), article(2)], settings()));
     const xml = xmlFrom(files);
     const media = [...files.keys()].filter((name) => name.startsWith('word/media/') && name.endsWith('.png'));
     expect(media).toHaveLength(2);
-    expect(xml).toContain('INV. ID: 7');
-    expect(xml).toContain('INV. ID: 8');
+    expectNoRemovedFields(xml);
     for (const name of media) expect(files.get(name)?.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
   });
 
-  it('omits inventory footer fields when showInventory is disabled', async () => {
-    const files = await documentFiles(await buildWordDocument([article(1)], settings({ showInventory: false })));
-    const xml = xmlFrom(files);
-    expect(xml).not.toContain('INV. ID: 1');
+  it('omits the printed date when showDate is disabled', async () => {
+    const xml = xmlFrom(await documentFiles(await buildWordDocument([article(1)], settings({ showDate: false }))));
     expect(xml).toContain('LOCATION: RACK-1');
     expect(xml).not.toContain('2026-11-03');
-    expect(xml).not.toContain('PO-1');
-    expect(xml).not.toContain('QTY 101');
+    expectNoRemovedFields(xml);
+  });
+
+  it('does not encode or print removed fields from legacy objects in any QR mode or format', async () => {
+    const legacy = { ...article(1), quantity: 999, po: 'PO-LEGACY', fifo: 888 };
+    expect(createArticle(legacy)).toEqual(article(1));
+    for (const mode of ['partNumber', 'partLocation', 'all'] as const) {
+      const payload = JSON.parse(qrPayload(legacy, mode));
+      expect(payload).not.toHaveProperty('quantity');
+      expect(payload).not.toHaveProperty('po');
+      expect(payload).not.toHaveProperty('fifo');
+      for (const format of ['small', 'large'] as const) {
+        const xml = xmlFrom(await documentFiles(await buildWordDocument([legacy], settings({ qrContent: mode, format }))));
+        expectNoRemovedFields(xml);
+      }
+    }
   });
 
   it('rejects empty, invalid, and oversized batches before generating a document', async () => {

@@ -18,8 +18,6 @@ export type ColumnMapping = {
   partNumber: string;
   description: string;
   location: string;
-  quantity: string;
-  po: string;
   date: string;
 };
 
@@ -31,89 +29,14 @@ const EMPTY_MAPPING: ColumnMapping = {
   partNumber: '',
   description: '',
   location: '',
-  quantity: '',
-  po: '',
   date: '',
 };
 
 const MAPPING_ALIASES: Record<keyof ColumnMapping, string[]> = {
-  partNumber: [
-    'numero de parte',
-    'numero parte',
-    'número de parte',
-    'número parte',
-    'no de parte',
-    'no. de parte',
-    'num de parte',
-    'num parte',
-    'part number',
-    'part no',
-    'part number sku',
-    'part #',
-    'part',
-    'sku',
-    'stock keeping unit',
-    'pn',
-    'p/n',
-    'item number',
-    'item no',
-    'item #',
-    'codigo',
-    'código',
-  ],
-  description: [
-    'descripcion',
-    'descripción',
-    'description',
-    'desc',
-    'item description',
-    'product description',
-    'nombre del producto',
-    'nombre',
-    'detalle',
-  ],
-  location: [
-    'locacion',
-    'locación',
-    'ubicacion',
-    'ubicación',
-    'location',
-    'loc',
-    'bin',
-    'shelf',
-    'warehouse location',
-    'storage location',
-  ],
-  quantity: [
-    'cantidad',
-    'quantity',
-    'qty',
-    'q.t.y.',
-    'units',
-    'unit count',
-    'stock',
-    'inventario',
-    'count',
-  ],
-  po: [
-    'po',
-    'p.o.',
-    'purchase order',
-    'purchaseorder',
-    'orden de compra',
-    'orden compra',
-    'oc',
-  ],
-  date: [
-    'fecha',
-    'date',
-    'received date',
-    'inventory date',
-    'fecha de ingreso',
-    'fecha ingreso',
-    'created date',
-    'created at',
-  ],
+  partNumber: ['numero de parte', 'numero parte', 'número de parte', 'número parte', 'no de parte', 'no. de parte', 'num de parte', 'num parte', 'part number', 'part no', 'part number sku', 'part #', 'part', 'sku', 'stock keeping unit', 'pn', 'p/n', 'item number', 'item no', 'item #', 'codigo', 'código'],
+  description: ['descripcion', 'descripción', 'description', 'desc', 'item description', 'product description', 'nombre del producto', 'nombre', 'detalle'],
+  location: ['locacion', 'locación', 'ubicacion', 'ubicación', 'location', 'loc', 'bin', 'shelf', 'warehouse location', 'storage location'],
+  date: ['fecha', 'date', 'received date', 'inventory date', 'fecha de ingreso', 'fecha ingreso', 'created date', 'created at'],
 };
 
 const SPANISH_MONTHS: Record<string, number> = {
@@ -386,17 +309,6 @@ function mappedValue(row: string[], headers: string[], selectedHeader: string): 
   return index >= 0 ? cleanString(row[index] ?? '') : '';
 }
 
-function parseQuantity(value: string): number {
-  const trimmed = value.trim();
-  if (!trimmed) return 1;
-
-  const compact = trimmed.replace(/\u00a0/g, ' ').replace(/\s+/g, '');
-  const groupedInteger = /^[+-]?\d{1,3}(?:,\d{3})+$/.test(compact);
-  const numericText = groupedInteger ? compact.replace(/,/g, '') : compact;
-  const parsed = Number(numericText);
-  return Number.isFinite(parsed) ? parsed : Number.NaN;
-}
-
 function normalizeDate(value: string): string {
   const raw = value.trim();
   if (!raw) return today();
@@ -431,29 +343,24 @@ export function mapImportRows(data: ImportData, mapping: ColumnMapping): Article
   const realRows = data.rows.filter(isNonEmptyRow);
   assertArticleLimit(realRows);
 
-  return realRows.map((row, index) => {
+  return realRows.map((row) => {
     const partNumber = mappedValue(row, data.headers, mapping.partNumber);
     const description = mappedValue(row, data.headers, mapping.description);
     const location = mappedValue(row, data.headers, mapping.location);
-    const quantity = parseQuantity(mappedValue(row, data.headers, mapping.quantity));
-    const po = mappedValue(row, data.headers, mapping.po);
     const date = normalizeDate(mappedValue(row, data.headers, mapping.date));
 
     return createArticle({
       partNumber,
       description,
       location,
-      quantity,
-      po,
       date,
-      fifo: index + 1,
     });
   });
 }
 
 function styleTemplate(worksheet: Worksheet): void {
   worksheet.views = [{ state: 'frozen', ySplit: 1 }];
-  worksheet.autoFilter = 'A1:F3';
+  worksheet.autoFilter = 'A1:D3';
   worksheet.getRow(1).height = 28;
   worksheet.getRow(1).eachCell((cell) => {
     cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
@@ -488,15 +395,9 @@ function styleTemplate(worksheet: Worksheet): void {
   worksheet.getColumn(2).width = 46;
   worksheet.getColumn(3).width = 16;
   worksheet.getColumn(4).width = 12;
-  worksheet.getColumn(5).width = 18;
-  worksheet.getColumn(6).width = 15;
   worksheet.getColumn(1).numFmt = '@';
   worksheet.getColumn(3).numFmt = '@';
-  worksheet.getColumn(4).numFmt = '0';
-  worksheet.getColumn(5).numFmt = '@';
-  worksheet.getColumn(6).numFmt = '@';
-  worksheet.getCell('D2').alignment = { vertical: 'middle', horizontal: 'right' };
-  worksheet.getCell('D3').alignment = { vertical: 'middle', horizontal: 'right' };
+  worksheet.getColumn(4).numFmt = '@';
 }
 
 export async function downloadExcelTemplate(): Promise<void> {
@@ -506,21 +407,17 @@ export async function downloadExcelTemplate(): Promise<void> {
   workbook.modified = new Date();
 
   const worksheet = workbook.addWorksheet('Inventario', { properties: { tabColor: { argb: 'FF1F4E78' } } });
-  worksheet.addRow(['Numero de parte', 'Descripcion', 'Locacion', 'Cantidad', 'PO', 'Fecha']);
+  worksheet.addRow(['Numero de parte', 'Descripcion', 'Locacion', 'Fecha']);
   worksheet.addRow([
     'DEMO-001',
     'Artículo de muestra — bolsa deportiva',
     'A-01',
-    1,
-    'DEMO-PO-001',
     today(),
   ]);
   worksheet.addRow([
     'DEMO-002',
     'Artículo de muestra — caja de pelotas',
     'A-02',
-    1,
-    'DEMO-PO-002',
     today(),
   ]);
   styleTemplate(worksheet);

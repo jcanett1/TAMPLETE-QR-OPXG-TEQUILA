@@ -3,30 +3,32 @@ export interface Article {
   partNumber: string;
   description: string;
   location: string;
-  quantity: number;
-  po: string;
   date: string;
-  fifo: number;
 }
 
 export interface LabelSettings {
   format: 'small' | 'large';
   paper: 'letter' | 'a4';
-  qrContent: 'partQuantity' | 'partLocation' | 'all';
-  showInventory: boolean;
-  fifoStart: number;
+  qrContent: 'partNumber' | 'partLocation' | 'all';
+  showDate: boolean;
 }
 
 export const MAX_ARTICLES = 1000;
 export const defaultSettings: LabelSettings = {
-  format: 'small', paper: 'letter', qrContent: 'partQuantity', showInventory: true, fifoStart: 1,
+  format: 'small', paper: 'letter', qrContent: 'partNumber', showDate: true,
 };
 export function today(): string {
   const date = new Date();
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 export function createArticle(values: Partial<Article> = {}): Article {
-  return { id: crypto.randomUUID(), partNumber: '', description: '', location: '', quantity: 1, po: '', date: today(), fifo: 1, ...values };
+  return {
+    id: values.id ?? crypto.randomUUID(),
+    partNumber: values.partNumber ?? '',
+    description: values.description ?? '',
+    location: values.location ?? '',
+    date: values.date ?? today(),
+  };
 }
 export function validateArticle(article: Article): string[] {
   const errors: string[] = [];
@@ -36,20 +38,15 @@ export function validateArticle(article: Article): string[] {
   if (article.partNumber.length > 80) errors.push('Número de parte: máximo 80 caracteres');
   if (article.description.length > 180) errors.push('Descripción: máximo 180 caracteres');
   if (article.location.length > 40) errors.push('Locación: máximo 40 caracteres');
-  if (!Number.isInteger(article.quantity) || article.quantity < 1 || article.quantity > 1000000) errors.push('Cantidad: entero de 1 a 1,000,000');
-  if (article.po.length > 50) errors.push('PO: máximo 50 caracteres');
   const dateMatch = article.date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   const date = dateMatch ? new Date(Date.UTC(Number(dateMatch[1]), Number(dateMatch[2]) - 1, Number(dateMatch[3]))) : undefined;
   if (!date || date.getUTCFullYear() !== Number(dateMatch?.[1]) || date.getUTCMonth() + 1 !== Number(dateMatch?.[2]) || date.getUTCDate() !== Number(dateMatch?.[3])) errors.push('Fecha inválida');
   return errors;
 }
-export function numberArticles(articles: Article[], start: number): Article[] {
-  return articles.map((article, index) => ({ ...article, fifo: start + index }));
-}
 export function qrPayload(article: Article, mode: LabelSettings['qrContent']): string {
-  if (mode === 'partLocation') return JSON.stringify({ partNumber: article.partNumber, quantity: article.quantity, location: article.location });
-  if (mode === 'all') return JSON.stringify({ partNumber: article.partNumber, description: article.description, location: article.location, quantity: article.quantity, date: article.date, po: article.po, fifo: article.fifo });
-  return JSON.stringify({ partNumber: article.partNumber, quantity: article.quantity });
+  if (mode === 'partLocation') return JSON.stringify({ partNumber: article.partNumber, location: article.location });
+  if (mode === 'all') return JSON.stringify({ partNumber: article.partNumber, description: article.description, location: article.location, date: article.date });
+  return JSON.stringify({ partNumber: article.partNumber });
 }
 export function pageGeometry(settings: LabelSettings) {
   const width = settings.paper === 'letter' ? 215.9 : 210;
@@ -77,4 +74,4 @@ export const demoArticles: Article[] = [
   ['DEMO-006', 'Artículo de muestra — sombrero gris', 'C-03'],
   ['DEMO-007', 'Artículo de muestra — accesorio negro', 'D-02'],
   ['DEMO-008', 'Artículo de muestra — accesorio blanco', 'D-03'],
-].map(([partNumber, description, location], i) => createArticle({ partNumber, description, location, fifo: i + 1 }));
+].map(([partNumber, description, location]) => createArticle({ partNumber, description, location }));

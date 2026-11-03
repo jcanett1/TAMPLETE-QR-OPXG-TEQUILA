@@ -24,7 +24,6 @@ import {
   LabelSettings,
   MAX_ARTICLES,
   downloadBlob,
-  numberArticles,
   pageGeometry,
   qrPayload,
   today,
@@ -35,8 +34,6 @@ const MARGIN_MM = 12.7;
 const TRAILING_PARAGRAPH_MM = 4;
 const BORDER = { style: BorderStyle.SINGLE, size: 4, color: '000000' } as const;
 const FONT = 'Arial';
-
-type NumberedArticle = Article;
 
 type PageLayout = ReturnType<typeof pageGeometry> & {
   pageWidthTwips: number;
@@ -65,20 +62,16 @@ function validateSettings(settings: LabelSettings): void {
   if (!settings || typeof settings !== 'object') throw new Error('Ajustes de etiquetas inválidos');
   if (settings.format !== 'small' && settings.format !== 'large') throw new Error('Formato de etiqueta inválido');
   if (settings.paper !== 'letter' && settings.paper !== 'a4') throw new Error('Papel inválido');
-  if (!['partQuantity', 'partLocation', 'all'].includes(settings.qrContent)) throw new Error('Contenido QR inválido');
-  if (!Number.isInteger(settings.fifoStart) || settings.fifoStart < 1) {
-    throw new Error('La secuencia FIFO debe comenzar en un entero positivo');
-  }
+  if (!['partNumber', 'partLocation', 'all'].includes(settings.qrContent)) throw new Error('Contenido QR inválido');
 }
 
-function numberAndValidateArticles(articles: Article[], settings: LabelSettings): NumberedArticle[] {
+function validateArticles(articles: Article[]): Article[] {
   if (!Array.isArray(articles)) throw new Error('Los artículos deben ser una lista');
   if (articles.length === 0) throw new Error('No hay artículos para exportar');
   if (articles.length > MAX_ARTICLES) throw new Error(`No se pueden exportar más de ${MAX_ARTICLES} artículos`);
 
-  const numbered = numberArticles(articles, settings.fifoStart);
   const errors: string[] = [];
-  numbered.forEach((article, index) => {
+  articles.forEach((article, index) => {
     try {
       const articleErrors = validateArticle(article);
       articleErrors.forEach((error) => errors.push(`Fila ${index + 1}: ${error}`));
@@ -87,7 +80,7 @@ function numberAndValidateArticles(articles: Article[], settings: LabelSettings)
     }
   });
   if (errors.length) throw new Error(errors.join('; '));
-  return numbered;
+  return articles;
 }
 
 function makePageLayout(settings: LabelSettings): PageLayout {
@@ -197,27 +190,17 @@ function inventoryParagraph(article: Article, settings: LabelSettings, widthTwip
     }),
   ];
 
-  if (settings.showInventory) {
-    paragraphs.push(labelParagraph(`INV. ID: ${article.fifo}`, {
-      size: isLarge ? 20 : 17,
-      bold: true,
-      after: 20,
-      fitWidth: idWidth,
-    }));
-  }
-
   paragraphs.push(labelParagraph(`LOCATION: ${location}`, {
-      size: locationSize,
-      bold: true,
-      color: '1F2937',
-      after: settings.showInventory ? (isLarge ? 38 : 24) : 0,
-      line: isLarge ? 260 : 230,
-      fitWidth: idWidth,
+    size: locationSize,
+    bold: true,
+    color: '1F2937',
+    after: settings.showDate ? (isLarge ? 38 : 24) : 0,
+    line: isLarge ? 260 : 230,
+    fitWidth: idWidth,
   }));
 
-  if (settings.showInventory) {
-    const footer = `${article.date} · PO ${truncate(article.po || '—', 50)} · QTY ${article.quantity} · FIFO ${article.fifo}`;
-    paragraphs.push(labelParagraph(footer, {
+  if (settings.showDate) {
+    paragraphs.push(labelParagraph(article.date, {
       size: isLarge ? 18 : 15,
       after: 0,
       line: isLarge ? 220 : 190,
@@ -249,7 +232,7 @@ function makeLabelCell(article: Article, qr: string, settings: LabelSettings, wi
 }
 
 function makePageTable(
-  articles: readonly (NumberedArticle | undefined)[],
+  articles: readonly (Article | undefined)[],
   qrs: readonly (string | undefined)[],
   settings: LabelSettings,
   layout: PageLayout,
@@ -307,14 +290,14 @@ export async function qrDataUrl(article: Article, mode: LabelSettings['qrContent
 
 export async function buildWordDocument(articles: Article[], settings: LabelSettings): Promise<Blob> {
   validateSettings(settings);
-  const numbered = numberAndValidateArticles(articles, settings);
+  const validated = validateArticles(articles);
   const layout = makePageLayout(settings);
   const qrs: string[] = [];
-  for (const article of numbered) qrs.push(await qrDataUrl(article, settings.qrContent));
+  for (const article of validated) qrs.push(await qrDataUrl(article, settings.qrContent));
 
   const sections = [];
-  for (let pageStart = 0; pageStart < numbered.length; pageStart += layout.perPage) {
-    const pageArticles = numbered.slice(pageStart, pageStart + layout.perPage);
+  for (let pageStart = 0; pageStart < validated.length; pageStart += layout.perPage) {
+    const pageArticles = validated.slice(pageStart, pageStart + layout.perPage);
     const pageQrs = qrs.slice(pageStart, pageStart + layout.perPage);
     while (pageArticles.length < layout.perPage) pageArticles.push(undefined as never);
     while (pageQrs.length < layout.perPage) pageQrs.push(undefined as never);

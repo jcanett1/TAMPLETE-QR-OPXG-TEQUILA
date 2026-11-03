@@ -5,8 +5,8 @@ Aplicación web para importar inventario, capturar artículos manualmente y crea
 ## Funciones
 
 - Importa la primera hoja de archivos **Excel `.xlsx`** o archivos **CSV**. Los encabezados comunes en español o inglés se sugieren automáticamente y pueden corregirse antes de importar. Los archivos antiguos `.xls` deben guardarse como `.xlsx` o `.csv`.
-- Captura y corrige números de parte, descripción, locación, cantidad, PO y fecha antes de generar. Cantidad inicia en `1`, fecha en hoy, PO es opcional y el número FIFO se asigna secuencialmente al lote.
-- Genera un QR por registro, incluyendo siempre número de parte y cantidad. El contenido predeterminado es JSON compacto; se puede incluir el registro completo desde Formato.
+- Captura y corrige número de parte, descripción, locación y fecha antes de generar. La fecha inicia en hoy.
+- Genera un QR por registro, incluyendo siempre el número de parte. El contenido predeterminado es JSON compacto; se puede incluir el registro completo desde Formato.
 - Ofrece dos plantillas basadas en los ejemplos: **8 etiquetas compactas (2 columnas × 4 filas)** o **3 etiquetas ampliadas (1 columna × 3 filas)** por página, en papel Carta o A4.
 - Permite recorrer la vista previa de todas las hojas generadas y exporta un documento Word `.docx` con las páginas del lote.
 
@@ -14,10 +14,10 @@ Aplicación web para importar inventario, capturar artículos manualmente y crea
 
 1. Inicia con la muestra ficticia o carga un inventario `.xlsx`/`.csv`.
 2. Confirma el mapeo de columnas y corrige los campos marcados para revisión.
-3. Elige Compacta o Ampliada, el papel y el inicio de la secuencia FIFO.
-4. Revisa la primera hoja y genera el Word.
+3. Elige Compacta o Ampliada, el papel y los datos del QR.
+4. Revisa las hojas y genera el Word.
 
-La plantilla `plantilla-inventario.xlsx` contiene los encabezados **Numero de parte**, **Descripcion**, **Locacion**, **Cantidad**, **PO** y **Fecha**. Las filas de ejemplo son ficticias; reemplázalas con los datos propios antes de importar.
+La plantilla `plantilla-inventario.xlsx` contiene los encabezados **Numero de parte**, **Descripcion**, **Locacion** y **Fecha**. Las filas de ejemplo son ficticias; reemplázalas con los datos propios antes de importar.
 
 ## Privacidad
 
