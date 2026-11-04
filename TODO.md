@@ -21,3 +21,8 @@
 ## Inventario propio
 - [x] Iniciar sin artículos ficticios ni controles DEMO, conservando carga Excel y captura manual.
 - [x] Descargar la plantilla Excel con encabezados y una fila vacía, sin productos de ejemplo.
+
+## 4. Descarga Word e impresión
+- [x] Evitar que Word estire caracteres en los textos de las etiquetas y permitir saltos de línea naturales.
+- [x] Abrir el diálogo nativo de impresión/vista previa desde el sistema e imprimir el lote completo, no solo la hoja visible.
+- [x] Respetar papel Carta/A4 y las retículas compacta 2×4 o ampliada 1×3.

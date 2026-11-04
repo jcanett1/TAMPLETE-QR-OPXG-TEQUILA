@@ -72,6 +72,10 @@ describe('exporter', () => {
     expect(dataUrl).toMatch(/^data:image\/png;base64,/);
     const png = Buffer.from(dataUrl.slice('data:image/png;base64,'.length), 'base64');
     expect(png.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+    expect(png.readUInt32BE(16)).toBe(512);
+    const printDataUrl = await qrDataUrl(item, 'all', 256);
+    const printPng = Buffer.from(printDataUrl.slice('data:image/png;base64,'.length), 'base64');
+    expect(printPng.readUInt32BE(16)).toBe(256);
     expect(JSON.parse(qrPayload(item, 'partNumber'))).toEqual({ partNumber: 'PART-01' });
     expect(JSON.parse(qrPayload(item, 'partLocation'))).toEqual({ partNumber: 'PART-01', location: 'RACK-1' });
     expect(JSON.parse(qrPayload(item, 'all'))).toEqual({
@@ -93,7 +97,23 @@ describe('exporter', () => {
     expect(count(xml, /<w:cantSplit\b/g)).toBe(8);
     expect(count(xml, /<w:tblLayout[^>]*w:type="fixed"/g)).toBe(2);
     expect(count(xml, /<w:tcBorders\b/g)).toBe(16);
+    expect(xml).not.toMatch(/<w:fitText\b/);
     expectNoRemovedFields(xml);
+  });
+
+  it('keeps long label text intact and lets Word wrap naturally instead of spacing characters', async () => {
+    const longItem = createArticle({
+      ...article(2),
+      partNumber: 'A-SHAFT-ADAPTER-DRIVER-HYBRID-2026',
+      description: 'Driver Shaft Adapter for Hybrid Right Hand Replacement Components',
+      location: 'E-28-RACK-12-BIN-04',
+    });
+    const xml = xmlFrom(await documentFiles(await buildWordDocument([longItem], settings())));
+    expect(xml).toContain(longItem.partNumber);
+    expect(xml).toContain(longItem.description);
+    expect(xml).toContain(`LOCATION: ${longItem.location}`);
+    expect(xml).not.toMatch(/<w:fitText\b/);
+    expect(xml).not.toMatch(/<w:noWrap\b/);
   });
 
   it('writes A4 large pages and preserves the remaining visible article data', async () => {

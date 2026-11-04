@@ -132,7 +132,7 @@ function paragraphSpacing(after = 0, line?: number) {
 
 function labelParagraph(
   text: string,
-  options: { size: number; bold?: boolean; color?: string; after?: number; line?: number; fitWidth?: number },
+  options: { size: number; bold?: boolean; color?: string; after?: number; line?: number },
 ): Paragraph {
   return new Paragraph({
     alignment: AlignmentType.CENTER,
@@ -144,7 +144,6 @@ function labelParagraph(
         color: options.color,
         font: FONT,
         size: options.size,
-        fitText: options.fitWidth ? { width: options.fitWidth } : undefined,
       }),
     ],
   });
@@ -167,11 +166,10 @@ function imageParagraph(article: Article, qr: string, settings: LabelSettings): 
   });
 }
 
-function inventoryParagraph(article: Article, settings: LabelSettings, widthTwips: number): Paragraph[] {
+function inventoryParagraph(article: Article, settings: LabelSettings): Paragraph[] {
   const part = truncate(article.partNumber, 80);
   const description = truncate(article.description, 180);
   const location = truncate(article.location, 40);
-  const idWidth = Math.max(600, widthTwips - 320);
   const isLarge = settings.format === 'large';
   const descriptionSize = textSizeForDescription(article, settings);
   const locationSize = isLarge ? 28 : 22;
@@ -180,13 +178,11 @@ function inventoryParagraph(article: Article, settings: LabelSettings, widthTwip
       size: textSizeForPart(article, settings),
       bold: true,
       after: isLarge ? 50 : 25,
-      fitWidth: idWidth,
     }),
     labelParagraph(description, {
       size: descriptionSize,
       after: isLarge ? 45 : 25,
       line: isLarge ? 250 : 220,
-      fitWidth: idWidth,
     }),
   ];
 
@@ -196,7 +192,6 @@ function inventoryParagraph(article: Article, settings: LabelSettings, widthTwip
     color: '1F2937',
     after: settings.showDate ? (isLarge ? 38 : 24) : 0,
     line: isLarge ? 260 : 230,
-    fitWidth: idWidth,
   }));
 
   if (settings.showDate) {
@@ -204,7 +199,6 @@ function inventoryParagraph(article: Article, settings: LabelSettings, widthTwip
       size: isLarge ? 18 : 15,
       after: 0,
       line: isLarge ? 220 : 190,
-      fitWidth: idWidth,
     }));
   }
 
@@ -227,7 +221,7 @@ function makeLabelCell(article: Article, qr: string, settings: LabelSettings, wi
     verticalAlign: VerticalAlignTable.CENTER,
     margins: { top: 80, bottom: 80, left: 100, right: 100 },
     borders: { top: BORDER, bottom: BORDER, left: BORDER, right: BORDER },
-    children: [...inventoryParagraph(article, settings, widthTwips), imageParagraph(article, qr, settings)],
+    children: [...inventoryParagraph(article, settings), imageParagraph(article, qr, settings)],
   });
 }
 
@@ -279,12 +273,12 @@ function trailingParagraph(layout: PageLayout): Paragraph {
   });
 }
 
-export async function qrDataUrl(article: Article, mode: LabelSettings['qrContent']): Promise<string> {
+export async function qrDataUrl(article: Article, mode: LabelSettings['qrContent'], width = 512): Promise<string> {
   return QRCode.toDataURL(qrPayload(article, mode), {
     type: 'image/png',
     errorCorrectionLevel: 'H',
     margin: 4,
-    width: 512,
+    width,
   });
 }
 

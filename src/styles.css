@@ -261,3 +261,113 @@ h1 em { color: var(--accent); font-family: 'Barlow Condensed', sans-serif; font-
 .preview-page-button:not(:disabled):hover { border-color: #e6a18e; color: var(--accent-dark); }
 .preview-page-button:disabled { color: #c1c8cd; background: #f6f7f8; }
 @media (max-width: 650px) { .preview-heading-tools { width: 100%; justify-content: space-between; gap: 5px; } .preview-controls { gap: 3px; } .preview-page-button { padding: 0 5px; } }
+
+
+.print-root { display: none; }
+
+@page label-letter { size: letter portrait; margin: 0; }
+@page label-a4 { size: A4 portrait; margin: 0; }
+
+@media print {
+  html, body, #root { width: 100%; min-height: 0; margin: 0 !important; padding: 0 !important; background: #fff !important; }
+  .app-shell { display: none !important; }
+  .print-root { display: block !important; color: #000; background: #fff; }
+  .print-sheet {
+    box-sizing: border-box;
+    display: grid;
+    width: 8.5in;
+    height: 11in;
+    margin: 0;
+    padding: 12.7mm;
+    page: label-letter;
+    break-after: page;
+    page-break-after: always;
+  }
+  .print-sheet-a4 { width: 210mm; height: 297mm; page: label-a4; }
+  .print-sheet:last-child { break-after: auto; page-break-after: auto; }
+  .print-grid {
+    box-sizing: border-box;
+    display: grid;
+    width: 100%;
+    height: 100%;
+    border: .25mm solid #111;
+    background: #fff;
+  }
+  .print-grid-small { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(4, minmax(0, 1fr)); }
+  .print-grid-large { grid-template-columns: minmax(0, 1fr); grid-template-rows: repeat(3, minmax(0, 1fr)); }
+  .print-cell {
+    box-sizing: border-box;
+    display: flex;
+    min-width: 0;
+    min-height: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: 2mm 2.5mm;
+    border-right: .2mm solid #111;
+    border-bottom: .2mm solid #111;
+    color: #111;
+    background: #fff;
+    text-align: center;
+    font-family: Arial, sans-serif;
+  }
+  .print-cell-small:nth-child(2n) { border-right: 0; }
+  .print-cell-small:nth-last-child(-n+2) { border-bottom: 0; }
+  .print-grid-large .print-cell { border-right: 0; }
+  .print-grid-large .print-cell:last-child { border-bottom: 0; }
+  .print-cell-part {
+    display: block;
+    max-width: 100%;
+    margin: 0;
+    color: #101418;
+    font-size: 12pt;
+    font-weight: 700;
+    line-height: 1.05;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  .print-cell-description {
+    display: block;
+    max-width: 100%;
+    margin-top: 1.2mm;
+    color: #222;
+    font-size: 8.5pt;
+    font-weight: 600;
+    line-height: 1.12;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  .print-cell-location {
+    display: block;
+    max-width: 100%;
+    margin-top: 1mm;
+    color: #30373d;
+    font-size: 8pt;
+    font-weight: 600;
+    line-height: 1.08;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  .print-cell-date { display: block; margin-top: 1mm; color: #727b83; font-size: 7pt; line-height: 1.05; }
+  .print-cell-qr { display: block; width: 22mm; height: 22mm; flex: 0 0 auto; margin-top: 2mm; object-fit: contain; image-rendering: pixelated; }
+  .print-cell-empty { background: #fff; }
+  .print-cell-large { padding: 3mm 5mm; }
+  .print-cell-large .print-cell-part { font-size: 22pt; }
+  .print-cell-large .print-cell-description { font-size: 13pt; }
+  .print-cell-large .print-cell-location { font-size: 11pt; margin-top: 1.5mm; }
+  .print-cell-large .print-cell-date { font-size: 9pt; margin-top: 1.5mm; }
+  .print-cell-large .print-cell-qr { width: 25mm; height: 25mm; margin-top: 2.5mm; }
+  * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+}
+
+
+.output-primary-actions { display: flex; align-items: center; gap: 9px; }
+.button-print { min-height: 42px; padding: 0 14px; font-size: 11px; }
+@media (max-width: 650px) {
+  .output-primary-actions { width: 100%; flex-direction: column; }
+  .output-primary-actions .button { width: 100%; }
+}

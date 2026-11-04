@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, ArrowDownToLine, ArrowRight, Check, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, FileSpreadsheet, FileText, Layers3, PackagePlus, Settings2, Tag, Upload, X } from 'lucide-react';
+import { AlertCircle, ArrowDownToLine, ArrowRight, Check, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, FileSpreadsheet, FileText, Layers3, PackagePlus, Printer, Settings2, Tag, Upload, X } from 'lucide-react';
 import type { Article, LabelSettings } from './lib/model';
 import { createArticle, defaultSettings, MAX_ARTICLES, validateArticle } from './lib/model';
 import type { ColumnMapping, ImportData } from './lib/importer';
 import './App.css';
+import PrintDocument, { type PrintJob } from './PrintDocument';
 
 const columns: { key: keyof Article; title: string; width: string }[] = [
   { key: 'partNumber', title: 'NÚMERO DE PARTE', width: '185px' },
@@ -19,6 +20,8 @@ export default function App() {
   const [mapping, setMapping] = useState<ColumnMapping | null>(null);
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
+  const [preparingPrint, setPreparingPrint] = useState(false);
+  const [printJob, setPrintJob] = useState<PrintJob | null>(null);
   const [active, setActive] = useState<'articles' | 'format' | 'output'>('articles');
   const fileRef = useRef<HTMLInputElement>(null);
   const validCount = useMemo(() => articles.filter(a => validateArticle(a).length === 0).length, [articles]);
@@ -41,6 +44,29 @@ export default function App() {
       .catch(() => { if (activeEffect) setPreviewCodes({}); });
     return () => { activeEffect = false; };
   }, [active, previewArticles, settings.qrContent]);
+
+  useEffect(() => {
+    if (!printJob) return;
+    let cancelled = false;
+    const printWhenReady = async () => {
+      await new Promise<void>(resolve => window.requestAnimationFrame(() => resolve()));
+      const images = Array.from(document.querySelectorAll<HTMLImageElement>('#print-root img'));
+      await Promise.all(images.map(image => image.decode()));
+      if (!cancelled) window.print();
+    };
+    void printWhenReady().catch(error => {
+      if (cancelled) return;
+      setNotice(error instanceof Error ? error.message : 'No se pudo preparar la vista de impresión.');
+      setPrintJob(null);
+    });
+    return () => { cancelled = true; };
+  }, [printJob]);
+
+  useEffect(() => {
+    const finishPrint = () => setPrintJob(null);
+    window.addEventListener('afterprint', finishPrint);
+    return () => window.removeEventListener('afterprint', finishPrint);
+  }, []);
 
   const updateArticle = (id: string, field: keyof Article, value: string) => {
     setArticles(old => old.map(row => row.id !== id ? row : ({ ...row, [field]: value })));
@@ -87,13 +113,48 @@ export default function App() {
     catch (error) { setNotice(error instanceof Error ? error.message : 'No se pudo generar el documento.'); }
     finally { setBusy(false); }
   };
+  const printDirect = async () => {
+    const printArticles = articles.map(article => ({ ...article }));
+    const printSettings = { ...settings };
+    if (!printArticles.length) {
+      setNotice('Añade o importa artículos para crear las etiquetas.');
+      setActive('articles');
+      return;
+    }
+    const invalidCount = printArticles.filter(article => validateArticle(article).length > 0).length;
+    if (invalidCount) {
+      setNotice(`${invalidCount} fila(s) tienen campos inválidos. Revisa los marcadores rojos antes de imprimir.`);
+      setActive('articles');
+      return;
+    }
+
+    setPreparingPrint(true);
+    setBusy(true);
+    setNotice('Preparando la vista previa de impresión…');
+    try {
+      const { qrDataUrl } = await import('./lib/exporter');
+      const codes: Record<string, string> = {};
+      for (const article of printArticles) {
+        codes[article.id] = await qrDataUrl(article, printSettings.qrContent, 256);
+      }
+      setNotice('');
+      setPrintJob({ articles: printArticles, settings: printSettings, codes });
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'No se pudo preparar la impresión.');
+    } finally {
+      setBusy(false);
+      setPreparingPrint(false);
+    }
+  };
+
   const mappingFields: { key: keyof ColumnMapping; label: string; required: boolean }[] = [
     { key: 'partNumber', label: 'Número de parte', required: true }, { key: 'description', label: 'Descripción', required: true },
     { key: 'location', label: 'Locación', required: true }, { key: 'date', label: 'Fecha', required: false },
   ];
   const selectClass = 'field-select';
 
-  return <div className="app-shell">
+  return <>
+    <div className="app-shell">
     <header className="topbar">
       <a className="brand" href="#" aria-label="QR Studio PXG Tequila"><span className="brand-mark"><span /><span /><span /><span /></span><span className="brand-copy"><strong>QR <b>STUDIO</b></strong><small>PXG · TEQUILA</small></span></a>
       <div className="topbar-right"><span className="live-dot" /> INVENTARIO · ETIQUETADO <span className="topbar-divider" /> <span className="topbar-muted">OPERACIONES</span></div>
@@ -135,9 +196,11 @@ export default function App() {
             </article> : <article className="print-label print-label-empty" key={`empty-${i}`}><span /></article>; })}
           </div>
         </div>
-        <div className="output-summary"><div className="summary-title"><span className="summary-icon"><Tag size={18} /></span><div><strong>Resumen de etiquetas</strong><small>PXG · TEQUILA / INVENTARIO</small></div><span className="summary-ready"><Check size={13} /> {validCount === articles.length && articles.length ? 'LISTO' : 'REVISAR'}</span></div><div className="summary-stats"><div><small>ARTÍCULOS</small><strong>{articles.length}</strong><span>registros en el lote</span></div><div><small>ETIQUETAS</small><strong>{validCount}</strong><span>válidas para imprimir</span></div><div><small>FORMATO</small><strong>{settings.format === 'small' ? 'Compacta' : 'Ampliada'}</strong><span>{settings.paper === 'letter' ? 'Papel Carta' : 'Papel A4'}</span></div><div><small>PÁGINAS EST.</small><strong>{Math.ceil(validCount / perPage)}</strong><span>aproximadas</span></div></div></div><div className="output-note"><span className="note-check"><Check size={14} /></span><p>Se generará un documento Word <strong>.docx</strong> con un código QR por artículo y distribución en hoja {settings.paper === 'letter' ? 'Carta' : 'A4'}.</p></div><div className="output-actions"><button className="button button-outline" onClick={() => setActive('articles')}>Volver a artículos</button><button className="button button-primary button-generate" onClick={() => void generate()} disabled={busy || !articles.length || validCount !== articles.length}><FileText size={16} /> {busy ? 'Generando documento…' : 'Generar etiquetas Word'} <ArrowRight size={15} /></button></div><div className="output-help"><FileSpreadsheet size={15} /> ¿Aún no tienes inventario? <button onClick={() => void downloadTemplate()}>Descarga la plantilla Excel <ArrowRight size={13} /></button></div></section>}
+        <div className="output-summary"><div className="summary-title"><span className="summary-icon"><Tag size={18} /></span><div><strong>Resumen de etiquetas</strong><small>PXG · TEQUILA / INVENTARIO</small></div><span className="summary-ready"><Check size={13} /> {validCount === articles.length && articles.length ? 'LISTO' : 'REVISAR'}</span></div><div className="summary-stats"><div><small>ARTÍCULOS</small><strong>{articles.length}</strong><span>registros en el lote</span></div><div><small>ETIQUETAS</small><strong>{validCount}</strong><span>válidas para imprimir</span></div><div><small>FORMATO</small><strong>{settings.format === 'small' ? 'Compacta' : 'Ampliada'}</strong><span>{settings.paper === 'letter' ? 'Papel Carta' : 'Papel A4'}</span></div><div><small>PÁGINAS EST.</small><strong>{Math.ceil(validCount / perPage)}</strong><span>aproximadas</span></div></div></div><div className="output-note"><span className="note-check"><Check size={14} /></span><p>Descarga el documento Word <strong>.docx</strong> o abre la vista previa de impresión del navegador. Ambas opciones incluyen todo el lote en papel {settings.paper === 'letter' ? 'Carta' : 'A4'}.</p></div><div className="output-actions"><button className="button button-outline" onClick={() => setActive('articles')}>Volver a artículos</button><div className="output-primary-actions"><button className="button button-outline button-print" onClick={() => void printDirect()} disabled={busy || preparingPrint || !!printJob || !articles.length || validCount !== articles.length}><Printer size={16} /> {preparingPrint ? 'Preparando impresión…' : 'Imprimir / vista previa'}</button><button className="button button-primary button-generate" onClick={() => void generate()} disabled={busy || preparingPrint || !!printJob || !articles.length || validCount !== articles.length}><FileText size={16} /> {busy && !preparingPrint ? 'Generando documento…' : 'Generar etiquetas Word'} <ArrowRight size={15} /></button></div></div><div className="output-help"><FileSpreadsheet size={15} /> ¿Aún no tienes inventario? <button onClick={() => void downloadTemplate()}>Descarga la plantilla Excel <ArrowRight size={13} /></button></div></section>}
       <footer className="footer"><span>QR STUDIO <b>·</b> PXG TEQUILA</span><span>HERRAMIENTA INTERNA DE OPERACIONES</span></footer>
     </main>
     {mappingData && mapping && <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget) { setMappingData(null); setMapping(null); } }}><section className="mapping-modal" role="dialog" aria-modal="true" aria-labelledby="mapping-title"><div className="modal-top"><div><span className="modal-kicker"><FileSpreadsheet size={14} /> IMPORTACIÓN DE INVENTARIO</span><h2 id="mapping-title">Vincula tus columnas</h2><p>Indica qué columna contiene cada dato. Los campos requeridos llevan <b>*</b>.</p></div><button className="modal-close" aria-label="Cerrar" onClick={() => { setMappingData(null); setMapping(null); }}><X size={18} /></button></div><div className="file-summary"><span className="file-icon"><FileSpreadsheet size={17} /></span><div><strong>{mappingData.sheetName || 'Archivo de inventario'}</strong><small>{mappingData.rows.length} filas · {mappingData.headers.length} columnas</small></div><Check size={16} /></div><div className="mapping-fields">{mappingFields.map(f => <label className="mapping-field" key={f.key}><span>{f.label}{f.required && <b> *</b>}</span><span className="select-wrap"><select className={selectClass} value={mapping[f.key]} onChange={e => setMapping(old => old ? { ...old, [f.key]: e.target.value } : old)}><option value="">{f.required ? 'Selecciona columna…' : 'No asignar'}</option>{mappingData.headers.map((header, i) => <option key={`${i}-${header}`} value={header}>{header}</option>)}</select><ChevronDown size={14} /></span></label>)}</div><div className="mapping-hint"><AlertCircle size={15} /> Los campos opcionales se dejarán vacíos o tomarán su valor predeterminado.</div><div className="modal-actions"><button className="button button-outline" onClick={() => { setMappingData(null); setMapping(null); }}>Cancelar</button><button className="button button-primary" onClick={() => void applyImport()}><Check size={15} /> Importar {mappingData.rows.length} filas</button></div></section></div>}
-  </div>;
+  </div>
+    {printJob && <PrintDocument job={printJob} />}
+  </>;
 }
