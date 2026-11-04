@@ -5,4 +5,5 @@ export default defineConfig({
   plugins: [react()],
   server: { host: '0.0.0.0', port: 3000, strictPort: true },
   build: { chunkSizeWarningLimit: 1600 },
+  base: process.env.VITE_BASE_PATH || '/',
 });
