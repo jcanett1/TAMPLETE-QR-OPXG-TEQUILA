@@ -31,3 +31,8 @@
 - [x] Escanear número de parte y locación como texto simple, sin la clave `partNumber`, llaves ni comillas JSON.
 - [x] Mantener el registro completo como texto simple con parte, descripción, locación y fecha.
 - [x] Mostrar solo el valor de locación en Word, sin el prefijo `LOCATION:`.
+
+## 6. Persistencia local y reemplazo de carga
+- [x] Guardar automáticamente en este navegador los artículos capturados/importados y los ajustes para que sigan disponibles al recargar la página; no enviar el inventario a un servidor.
+- [x] En Artículos, junto a Plantilla Excel y Cargar Excel, ofrecer Eliminar carga para dejar el inventario vacío, listo para cargar un archivo nuevo.
+- [x] Pedir confirmación antes de eliminar todos los registros importados o capturados manualmente y conservar los ajustes de formato.

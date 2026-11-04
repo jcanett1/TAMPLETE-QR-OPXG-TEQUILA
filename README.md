@@ -21,7 +21,7 @@ La plantilla `plantilla-inventario.xlsx` contiene los encabezados **Numero de pa
 
 ## Privacidad
 
-La lectura del inventario, la generación del QR, la exportación Word y la impresión ocurren en el navegador. La aplicación no envía los archivos, registros ni credenciales a un servidor y no guarda el inventario en una base de datos. Los datos de la tabla se mantienen únicamente en la sesión actual.
+La lectura del inventario, la generación del QR, la exportación Word y la impresión ocurren en el navegador. Los artículos y ajustes se guardan automáticamente en el `localStorage` de este navegador para que sigan disponibles al recargar; no se envían a un servidor ni se guardan en una base de datos. El botón **Eliminar carga** borra los artículos importados o capturados y conserva los ajustes de formato. Si borras los datos del sitio en el navegador, también se elimina el inventario local.
 
 ## Desarrollo
 

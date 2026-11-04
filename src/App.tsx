@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, ArrowDownToLine, ArrowRight, Check, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, FileSpreadsheet, FileText, Layers3, PackagePlus, Printer, Settings2, Tag, Upload, X } from 'lucide-react';
+import { AlertCircle, ArrowDownToLine, ArrowRight, Check, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, FileSpreadsheet, FileText, Layers3, PackagePlus, Printer, Settings2, Tag, Trash2, Upload, X } from 'lucide-react';
 import type { Article, LabelSettings } from './lib/model';
-import { createArticle, defaultSettings, MAX_ARTICLES, validateArticle } from './lib/model';
+import { createArticle, MAX_ARTICLES, validateArticle } from './lib/model';
 import type { ColumnMapping, ImportData } from './lib/importer';
+import { loadSavedWorkspace, saveWorkspace } from './lib/persistence';
 import './App.css';
 import PrintDocument, { type PrintJob } from './PrintDocument';
 
@@ -11,17 +12,17 @@ const columns: { key: keyof Article; title: string; width: string }[] = [
   { key: 'description', title: 'DESCRIPCIÓN', width: '1fr' }, { key: 'location', title: 'LOCACIÓN', width: '100px' },
   { key: 'date', title: 'FECHA', width: '130px' },
 ];
-const freshSettings = (): LabelSettings => ({ ...defaultSettings });
-
 export default function App() {
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [settings, setSettings] = useState<LabelSettings>(freshSettings);
+  const [savedWorkspace] = useState(loadSavedWorkspace);
+  const [articles, setArticles] = useState<Article[]>(savedWorkspace.articles);
+  const [settings, setSettings] = useState<LabelSettings>(savedWorkspace.settings);
   const [mappingData, setMappingData] = useState<ImportData | null>(null);
   const [mapping, setMapping] = useState<ColumnMapping | null>(null);
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
   const [preparingPrint, setPreparingPrint] = useState(false);
   const [printJob, setPrintJob] = useState<PrintJob | null>(null);
+  const [confirmClear, setConfirmClear] = useState(false);
   const [active, setActive] = useState<'articles' | 'format' | 'output'>('articles');
   const fileRef = useRef<HTMLInputElement>(null);
   const validCount = useMemo(() => articles.filter(a => validateArticle(a).length === 0).length, [articles]);
@@ -34,6 +35,12 @@ export default function App() {
   const pageTo = Math.min(articles.length, (visiblePage + 1) * perPage);
   const previewArticles = useMemo(() => articles.slice(visiblePage * perPage, (visiblePage + 1) * perPage), [articles, visiblePage, perPage]);
   const [previewCodes, setPreviewCodes] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!saveWorkspace({ articles, settings })) {
+      setNotice('No se pudieron guardar los cambios en este navegador. Revisa el almacenamiento local.');
+    }
+  }, [articles, settings]);
 
   useEffect(() => {
     if (active !== 'output') return;
@@ -100,6 +107,18 @@ export default function App() {
     try { const { downloadExcelTemplate } = await import('./lib/importer'); await downloadExcelTemplate(); }
     catch (error) { setNotice(error instanceof Error ? error.message : 'No se pudo descargar la plantilla.'); }
     finally { setBusy(false); }
+  };
+  const clearInventory = () => {
+    const saved = saveWorkspace({ articles: [], settings });
+    setArticles([]);
+    setMappingData(null);
+    setMapping(null);
+    setPreviewCodes({});
+    setPreviewPage(0);
+    setConfirmClear(false);
+    setNotice(saved
+      ? 'Carga eliminada. El inventario local quedó vacío; puedes subir un archivo nuevo.'
+      : 'Carga eliminada de esta sesión, pero no se pudo actualizar el almacenamiento local.');
   };
   const changeSetting = <K extends keyof LabelSettings>(key: K, value: LabelSettings[K]) => {
     setSettings(old => ({ ...old, [key]: value }));
@@ -170,12 +189,12 @@ export default function App() {
       {notice && <div className="notice" role="status"><span>{notice}</span><button aria-label="Cerrar aviso" onClick={() => setNotice('')}><X size={15} /></button></div>}
 
       {active === 'articles' && <section className="panel">
-        <div className="panel-heading"><div><div className="section-kicker">01 / INVENTARIO</div><h2>Artículos <span className="heading-count">{articles.length.toString().padStart(2, '0')}</span></h2><p>Importa Excel (.xlsx) o CSV; también puedes capturar las filas manualmente.</p></div><div className="actions"><input ref={fileRef} type="file" accept=".xlsx,.csv,text/csv" hidden onChange={e => void loadFile(e.target.files?.[0])} /><button className="button button-outline" onClick={() => void downloadTemplate()}><FileSpreadsheet size={15} /> Plantilla Excel <ArrowDownToLine size={14} /></button><button className="button button-primary" onClick={() => fileRef.current?.click()} disabled={busy}><Upload size={15} /> {busy ? 'Leyendo…' : 'Cargar Excel'}</button></div></div>
+        <div className="panel-heading"><div><div className="section-kicker">01 / INVENTARIO</div><h2>Artículos <span className="heading-count">{articles.length.toString().padStart(2, '0')}</span></h2><p>Importa Excel (.xlsx) o CSV; también puedes capturar las filas manualmente.</p></div><div className="actions"><input ref={fileRef} type="file" accept=".xlsx,.csv,text/csv" hidden onChange={e => void loadFile(e.target.files?.[0])} /><button className="button button-outline" onClick={() => void downloadTemplate()}><FileSpreadsheet size={15} /> Plantilla Excel <ArrowDownToLine size={14} /></button><button className="button button-primary" onClick={() => fileRef.current?.click()} disabled={busy}><Upload size={15} /> {busy ? 'Leyendo…' : 'Cargar Excel'}</button><button className="button button-outline button-clear" onClick={() => setConfirmClear(true)} disabled={busy || articles.length === 0} title="Eliminar todos los artículos guardados en este navegador"><Trash2 size={15} /> Eliminar carga</button></div></div>
         <div className="table-wrap"><div className="table-scroll"><div className="inventory-table table-head" style={{ gridTemplateColumns: `42px ${columns.map(c => c.width).join(' ')} 36px` }}><span className="row-index">#</span>{columns.map(c => <span key={c.key}>{c.title}</span>)}<span /></div>
           {articles.map((article, index) => { const errors = validateArticle(article); return <div className={`inventory-table table-row ${errors.length ? 'row-invalid' : ''}`} key={article.id} style={{ gridTemplateColumns: `42px ${columns.map(c => c.width).join(' ')} 36px` }}><span className="row-index">{String(index + 1).padStart(2, '0')}</span>{columns.map(c => <label key={c.key} className={`cell-input ${errors.some(e => (c.key === 'partNumber' && e.includes('parte')) || (c.key === 'description' && e.includes('Descripción')) || (c.key === 'location' && e.includes('locación')) || (c.key === 'date' && e.includes('Fecha'))) ? 'cell-error' : ''}`}><span className="sr-only">{c.title}</span><input aria-label={`${c.title}, fila ${index + 1}`} title={errors.join(' · ')} type={c.key === 'date' ? 'date' : 'text'} value={String(article[c.key])} onChange={e => updateArticle(article.id, c.key, e.target.value)} /></label>)}<button className="remove-row" aria-label={`Eliminar fila ${index + 1}`} onClick={() => { setArticles(old => old.filter(a => a.id !== article.id)); }}><X size={15} /></button></div>; })}
           {!articles.length && <div className="empty-state"><PackagePlus size={25} /><strong>Tu inventario empieza aquí</strong><span>Carga una hoja Excel o añade una fila manualmente.</span></div>}
         </div></div>
-        <div className="table-footer"><button className="add-row" onClick={addRow}><PackagePlus size={15} /> Añadir artículo</button><span><span className="validation-dot" /> {validCount === articles.length && articles.length ? 'Todos los artículos están listos' : `${articles.length - validCount} por revisar`} <span className="footer-divider">·</span> Los cambios se guardan en esta sesión</span></div>
+        <div className="table-footer"><button className="add-row" onClick={addRow}><PackagePlus size={15} /> Añadir artículo</button><span><span className="validation-dot" /> {validCount === articles.length && articles.length ? 'Todos los artículos están listos' : `${articles.length - validCount} por revisar`} <span className="footer-divider">·</span> Guardado local automático</span></div>
       </section>}
 
       {active === 'format' && <section className="panel"><div className="panel-heading"><div><div className="section-kicker">02 / PERSONALIZACIÓN</div><h2>Formato <span className="heading-count">02</span></h2><p>Define la etiqueta, papel y datos que llevará el código QR.</p></div><span className="heading-icon"><Settings2 size={19} /></span></div>
@@ -200,6 +219,7 @@ export default function App() {
       <footer className="footer"><span>QR STUDIO <b>·</b> PXG TEQUILA</span><span>HERRAMIENTA INTERNA DE OPERACIONES</span></footer>
     </main>
     {mappingData && mapping && <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget) { setMappingData(null); setMapping(null); } }}><section className="mapping-modal" role="dialog" aria-modal="true" aria-labelledby="mapping-title"><div className="modal-top"><div><span className="modal-kicker"><FileSpreadsheet size={14} /> IMPORTACIÓN DE INVENTARIO</span><h2 id="mapping-title">Vincula tus columnas</h2><p>Indica qué columna contiene cada dato. Los campos requeridos llevan <b>*</b>.</p></div><button className="modal-close" aria-label="Cerrar" onClick={() => { setMappingData(null); setMapping(null); }}><X size={18} /></button></div><div className="file-summary"><span className="file-icon"><FileSpreadsheet size={17} /></span><div><strong>{mappingData.sheetName || 'Archivo de inventario'}</strong><small>{mappingData.rows.length} filas · {mappingData.headers.length} columnas</small></div><Check size={16} /></div><div className="mapping-fields">{mappingFields.map(f => <label className="mapping-field" key={f.key}><span>{f.label}{f.required && <b> *</b>}</span><span className="select-wrap"><select className={selectClass} value={mapping[f.key]} onChange={e => setMapping(old => old ? { ...old, [f.key]: e.target.value } : old)}><option value="">{f.required ? 'Selecciona columna…' : 'No asignar'}</option>{mappingData.headers.map((header, i) => <option key={`${i}-${header}`} value={header}>{header}</option>)}</select><ChevronDown size={14} /></span></label>)}</div><div className="mapping-hint"><AlertCircle size={15} /> Los campos opcionales se dejarán vacíos o tomarán su valor predeterminado.</div><div className="modal-actions"><button className="button button-outline" onClick={() => { setMappingData(null); setMapping(null); }}>Cancelar</button><button className="button button-primary" onClick={() => void applyImport()}><Check size={15} /> Importar {mappingData.rows.length} filas</button></div></section></div>}
+    {confirmClear && <div className="modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setConfirmClear(false); }}><section className="mapping-modal clear-confirm" role="alertdialog" aria-modal="true" aria-labelledby="clear-title" aria-describedby="clear-description"><div className="modal-top"><div><span className="modal-kicker"><Trash2 size={14} /> INVENTARIO LOCAL</span><h2 id="clear-title">¿Eliminar la carga actual?</h2><p id="clear-description">Se eliminarán {articles.length} registros guardados en este navegador, incluidos los importados y los capturados manualmente. Los ajustes de formato se conservarán. Esta acción no se puede deshacer.</p></div><button className="modal-close" aria-label="Cancelar eliminación" onClick={() => setConfirmClear(false)}><X size={18} /></button></div><div className="modal-actions"><button className="button button-outline" onClick={() => setConfirmClear(false)}>Cancelar</button><button className="button button-danger" onClick={clearInventory}><Trash2 size={15} /> Eliminar carga</button></div></section></div>}
   </div>
     {printJob && <PrintDocument job={printJob} />}
   </>;

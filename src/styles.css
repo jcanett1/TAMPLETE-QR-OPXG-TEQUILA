@@ -371,3 +371,11 @@ h1 em { color: var(--accent); font-family: 'Barlow Condensed', sans-serif; font-
   .output-primary-actions { width: 100%; flex-direction: column; }
   .output-primary-actions .button { width: 100%; }
 }
+
+
+.button-clear { color: #aa4a39; background: #fffaf8; border-color: #efd2cb; }
+.button-clear:hover:not(:disabled) { color: #9c3727; background: #fff2ee; border-color: #e7b5a8; }
+.button-clear:disabled { color: #b4bcc2; background: #f7f8f9; border-color: #e5e9eb; box-shadow: none; }
+.button-danger { color: #fff; background: #c94d37; border-color: #c94d37; box-shadow: 0 3px 9px rgba(201,77,55,.16); }
+.button-danger:hover:not(:disabled) { background: #ad3e2b; border-color: #ad3e2b; }
+.clear-confirm .modal-top p { max-width: 390px; line-height: 1.55; }
