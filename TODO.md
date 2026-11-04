@@ -26,3 +26,8 @@
 - [x] Evitar que Word estire caracteres en los textos de las etiquetas y permitir saltos de línea naturales.
 - [x] Abrir el diálogo nativo de impresión/vista previa desde el sistema e imprimir el lote completo, no solo la hoja visible.
 - [x] Respetar papel Carta/A4 y las retículas compacta 2×4 o ampliada 1×3.
+
+## 5. Contenido QR y locación
+- [x] Escanear número de parte y locación como texto simple, sin la clave `partNumber`, llaves ni comillas JSON.
+- [x] Mantener el registro completo como texto simple con parte, descripción, locación y fecha.
+- [x] Mostrar solo el valor de locación en Word, sin el prefijo `LOCATION:`.

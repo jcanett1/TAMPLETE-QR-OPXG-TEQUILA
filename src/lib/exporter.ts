@@ -186,7 +186,7 @@ function inventoryParagraph(article: Article, settings: LabelSettings): Paragrap
     }),
   ];
 
-  paragraphs.push(labelParagraph(`LOCATION: ${location}`, {
+  paragraphs.push(labelParagraph(location, {
     size: locationSize,
     bold: true,
     color: '1F2937',

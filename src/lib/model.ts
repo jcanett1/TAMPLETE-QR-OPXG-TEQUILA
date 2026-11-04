@@ -15,7 +15,7 @@ export interface LabelSettings {
 
 export const MAX_ARTICLES = 1000;
 export const defaultSettings: LabelSettings = {
-  format: 'small', paper: 'letter', qrContent: 'partNumber', showDate: true,
+  format: 'small', paper: 'letter', qrContent: 'partLocation', showDate: true,
 };
 export function today(): string {
   const date = new Date();
@@ -44,9 +44,13 @@ export function validateArticle(article: Article): string[] {
   return errors;
 }
 export function qrPayload(article: Article, mode: LabelSettings['qrContent']): string {
-  if (mode === 'partLocation') return JSON.stringify({ partNumber: article.partNumber, location: article.location });
-  if (mode === 'all') return JSON.stringify({ partNumber: article.partNumber, description: article.description, location: article.location, date: article.date });
-  return JSON.stringify({ partNumber: article.partNumber });
+  const values = mode === 'all'
+    ? [article.partNumber, article.description, article.location, article.date]
+    : [article.partNumber, article.location];
+  return values
+    .map(value => value.replace(/[\r\n]+/g, ' ').trim())
+    .filter(Boolean)
+    .join('\n');
 }
 export function pageGeometry(settings: LabelSettings) {
   const width = settings.paper === 'letter' ? 215.9 : 210;

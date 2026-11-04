@@ -72,15 +72,22 @@ describe('exporter', () => {
     expect(dataUrl).toMatch(/^data:image\/png;base64,/);
     const png = Buffer.from(dataUrl.slice('data:image/png;base64,'.length), 'base64');
     expect(png.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
-    expect(png.readUInt32BE(16)).toBe(512);
+    expect(png.readUInt32BE(16)).toBe(511);
     const printDataUrl = await qrDataUrl(item, 'all', 256);
     const printPng = Buffer.from(printDataUrl.slice('data:image/png;base64,'.length), 'base64');
-    expect(printPng.readUInt32BE(16)).toBe(256);
-    expect(JSON.parse(qrPayload(item, 'partNumber'))).toEqual({ partNumber: 'PART-01' });
-    expect(JSON.parse(qrPayload(item, 'partLocation'))).toEqual({ partNumber: 'PART-01', location: 'RACK-1' });
-    expect(JSON.parse(qrPayload(item, 'all'))).toEqual({
-      partNumber: 'PART-01', description: 'Descripción del artículo 1', location: 'RACK-1', date: '2026-11-03',
-    });
+    expect(printPng.readUInt32BE(16)).toBe(255);
+    expect(qrPayload(item, 'partNumber')).toBe('PART-01\nRACK-1');
+    expect(qrPayload(item, 'partLocation')).toBe('PART-01\nRACK-1');
+    expect(qrPayload(item, 'all')).toBe('PART-01\nDescripción del artículo 1\nRACK-1\n2026-11-03');
+    for (const mode of ['partNumber', 'partLocation', 'all'] as const) {
+      const payload = qrPayload(item, mode);
+      expect(payload).toContain('PART-01');
+      expect(payload).toContain('RACK-1');
+      expect(payload).not.toContain('partNumber');
+      expect(payload.includes('{')).toBe(false);
+      expect(payload.includes('}')).toBe(false);
+      expect(payload.includes('"')).toBe(false);
+    }
   });
 
   it('writes Letter geometry, eight fixed cells, and empty bordered cells', async () => {
@@ -111,7 +118,8 @@ describe('exporter', () => {
     const xml = xmlFrom(await documentFiles(await buildWordDocument([longItem], settings())));
     expect(xml).toContain(longItem.partNumber);
     expect(xml).toContain(longItem.description);
-    expect(xml).toContain(`LOCATION: ${longItem.location}`);
+    expect(xml).toContain(longItem.location);
+    expect(xml).not.toContain('LOCATION:');
     expect(xml).not.toMatch(/<w:fitText\b/);
     expect(xml).not.toMatch(/<w:noWrap\b/);
   });
@@ -126,10 +134,11 @@ describe('exporter', () => {
     expect(count(xml, /<w:tc(?:\s|>)/g)).toBe(3);
     expect(xml).toContain('PART-01');
     expect(xml).toContain('Descripción del artículo 1');
-    expect(xml).toContain('LOCATION: RACK-1');
+    expect(xml).toContain('RACK-1');
+    expect(xml).not.toContain('LOCATION:');
     expect(xml).toContain('2026-11-03');
     expect(xml.indexOf('PART-01')).toBeLessThan(xml.indexOf('<w:drawing>'));
-    expect(xml.indexOf('LOCATION: RACK-1')).toBeLessThan(xml.indexOf('<w:drawing>'));
+    expect(xml.indexOf('RACK-1')).toBeLessThan(xml.indexOf('<w:drawing>'));
     expectNoRemovedFields(xml);
   });
 
@@ -144,7 +153,8 @@ describe('exporter', () => {
 
   it('omits the printed date when showDate is disabled', async () => {
     const xml = xmlFrom(await documentFiles(await buildWordDocument([article(1)], settings({ showDate: false }))));
-    expect(xml).toContain('LOCATION: RACK-1');
+    expect(xml).toContain('RACK-1');
+    expect(xml).not.toContain('LOCATION:');
     expect(xml).not.toContain('2026-11-03');
     expectNoRemovedFields(xml);
   });
@@ -153,10 +163,16 @@ describe('exporter', () => {
     const legacy = { ...article(1), quantity: 999, po: 'PO-LEGACY', fifo: 888 };
     expect(createArticle(legacy)).toEqual(article(1));
     for (const mode of ['partNumber', 'partLocation', 'all'] as const) {
-      const payload = JSON.parse(qrPayload(legacy, mode));
-      expect(payload).not.toHaveProperty('quantity');
-      expect(payload).not.toHaveProperty('po');
-      expect(payload).not.toHaveProperty('fifo');
+      const payload = qrPayload(legacy, mode);
+      expect(payload).toContain('PART-01');
+      expect(payload).toContain('RACK-1');
+      expect(payload).not.toContain('partNumber');
+      expect(payload).not.toContain('999');
+      expect(payload).not.toContain('PO-LEGACY');
+      expect(payload).not.toContain('888');
+      expect(payload.includes('{')).toBe(false);
+      expect(payload.includes('}')).toBe(false);
+      expect(payload.includes('"')).toBe(false);
       for (const format of ['small', 'large'] as const) {
         const xml = xmlFrom(await documentFiles(await buildWordDocument([legacy], settings({ qrContent: mode, format }))));
         expectNoRemovedFields(xml);
