@@ -12,6 +12,9 @@ describe('inventario inicial', () => {
     expect(html).toContain('Plantilla Excel');
     expect(html).toContain('Eliminar carga');
     expect(html).toContain('Guardado local automático');
+    expect(html).toContain('Soporte IT:');
+    expect(html).toContain('Julio Canett');
+    expect(html).toContain('Creado por');
     expect(html).not.toContain('DEMO');
     expect(html).not.toContain('Restaurar muestra');
     expect(html).not.toContain('Estás viendo datos de ejemplo');

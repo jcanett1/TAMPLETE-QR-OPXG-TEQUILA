@@ -379,3 +379,11 @@ h1 em { color: var(--accent); font-family: 'Barlow Condensed', sans-serif; font-
 .button-danger { color: #fff; background: #c94d37; border-color: #c94d37; box-shadow: 0 3px 9px rgba(201,77,55,.16); }
 .button-danger:hover:not(:disabled) { background: #ad3e2b; border-color: #ad3e2b; }
 .clear-confirm .modal-top p { max-width: 390px; line-height: 1.55; }
+
+.footer strong { color: #65717c; font-weight: 700; }
+.footer-support, .footer-credit { white-space: nowrap; }
+@media (max-width: 650px) {
+  .footer { display: grid; grid-template-columns: 1fr 1fr; align-items: start; gap: 8px 10px; }
+  .footer-brand, .footer-tagline { grid-column: 1 / -1; }
+  .footer-credit { text-align: right; }
+}

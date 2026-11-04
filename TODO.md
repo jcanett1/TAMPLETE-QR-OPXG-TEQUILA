@@ -36,3 +36,7 @@
 - [x] Guardar automáticamente en este navegador los artículos capturados/importados y los ajustes para que sigan disponibles al recargar la página; no enviar el inventario a un servidor.
 - [x] En Artículos, junto a Plantilla Excel y Cargar Excel, ofrecer Eliminar carga para dejar el inventario vacío, listo para cargar un archivo nuevo.
 - [x] Pedir confirmación antes de eliminar todos los registros importados o capturados manualmente y conservar los ajustes de formato.
+
+## 7. Footer de soporte y autoría
+- [x] Mostrar en el footer `Soporte IT: Julio Canett`.
+- [x] Mostrar `Creado por Julio Canett · IT`, conservando la identificación del sistema.
