@@ -12,16 +12,16 @@ Aplicación web para importar inventario, capturar artículos manualmente y crea
 
 ## Uso
 
-1. Inicia con la muestra ficticia o carga un inventario `.xlsx`/`.csv`.
+1. La aplicación inicia vacía. Carga tu inventario `.xlsx`/`.csv` o agrega artículos manualmente.
 2. Confirma el mapeo de columnas y corrige los campos marcados para revisión.
 3. Elige Compacta o Ampliada, el papel y los datos del QR.
 4. Revisa las hojas y genera el Word.
 
-La plantilla `plantilla-inventario.xlsx` contiene los encabezados **Numero de parte**, **Descripcion**, **Locacion** y **Fecha**. Las filas de ejemplo son ficticias; reemplázalas con los datos propios antes de importar.
+La plantilla `plantilla-inventario.xlsx` contiene los encabezados **Numero de parte**, **Descripcion**, **Locacion** y **Fecha**, además de una fila vacía para tus datos. No incluye registros de ejemplo.
 
 ## Privacidad
 
-La lectura del inventario, la generación del QR y la exportación Word ocurren en el navegador. La aplicación no envía los archivos, registros ni credenciales a un servidor y no guarda el inventario en una base de datos. La muestra incluida es ficticia y los cambios de la tabla se mantienen únicamente en la sesión actual.
+La lectura del inventario, la generación del QR y la exportación Word ocurren en el navegador. La aplicación no envía los archivos, registros ni credenciales a un servidor y no guarda el inventario en una base de datos. Los datos de la tabla se mantienen únicamente en la sesión actual.
 
 ## Desarrollo
 

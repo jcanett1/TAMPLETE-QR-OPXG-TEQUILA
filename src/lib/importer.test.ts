@@ -85,7 +85,7 @@ describe('readInventoryFile', () => {
 });
 
 describe('downloadExcelTemplate', () => {
-  it('descarga un Blob XLSX real con cuatro encabezados y autofiltro', async () => {
+  it('descarga un Blob XLSX real con cuatro encabezados y una fila vacía, sin artículos de ejemplo', async () => {
     let downloadedBlob: Blob | undefined;
     const anchor = { href: '', download: '', click: vi.fn(), remove: vi.fn() };
     const createObjectURL = vi.fn((blob: Blob) => { downloadedBlob = blob; return 'blob:plantilla'; });
@@ -100,10 +100,15 @@ describe('downloadExcelTemplate', () => {
     await workbook.xlsx.load(await downloadedBlob!.arrayBuffer());
     const sheet = workbook.worksheets[0];
     expect(sheet.getRow(1).values).toEqual([, 'Numero de parte', 'Descripcion', 'Locacion', 'Fecha']);
-    expect(sheet.autoFilter).toBe('A1:D3');
-    expect(sheet.getCell('A2').value).toBe('DEMO-001');
+    expect(sheet.autoFilter).toBe('A1:D2');
+    expect(['', null, undefined]).toContain(sheet.getCell('A2').value);
+    expect(['', null, undefined]).toContain(sheet.getCell('B2').value);
+    expect(['', null, undefined]).toContain(sheet.getCell('C2').value);
+    expect(['', null, undefined]).toContain(sheet.getCell('D2').value);
     expect(sheet.getCell('A2').numFmt).toBe('@');
-    expect(sheet.getCell('D2').value).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    const imported = await readInventoryFile(asFile(await downloadedBlob!.arrayBuffer(), 'plantilla-inventario.xlsx'));
+    expect(imported.rows).toEqual([]);
+    expect(mapImportRows(imported, suggestMapping(imported.headers))).toEqual([]);
     vi.unstubAllGlobals();
   });
 });

@@ -65,13 +65,3 @@ export function downloadBlob(blob: Blob, name: string) {
   anchor.href = url; anchor.download = name; document.body.appendChild(anchor); anchor.click(); anchor.remove();
   setTimeout(() => URL.revokeObjectURL(url), 15000);
 }
-export const demoArticles: Article[] = [
-  ['DEMO-001', 'Artículo de muestra — bolsa deportiva', 'A-01'],
-  ['DEMO-002', 'Artículo de muestra — caja de pelotas', 'A-02'],
-  ['DEMO-003', 'Artículo de muestra — marcador', 'B-06'],
-  ['DEMO-004', 'Artículo de muestra — gorra verde', 'C-01'],
-  ['DEMO-005', 'Artículo de muestra — gorra de malla azul', 'C-02'],
-  ['DEMO-006', 'Artículo de muestra — sombrero gris', 'C-03'],
-  ['DEMO-007', 'Artículo de muestra — accesorio negro', 'D-02'],
-  ['DEMO-008', 'Artículo de muestra — accesorio blanco', 'D-03'],
-].map(([partNumber, description, location]) => createArticle({ partNumber, description, location }));

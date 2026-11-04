@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, ArrowDownToLine, ArrowRight, Check, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, FileSpreadsheet, FileText, Layers3, PackagePlus, RotateCcw, Settings2, Sparkles, Tag, Upload, X } from 'lucide-react';
+import { AlertCircle, ArrowDownToLine, ArrowRight, Check, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, FileSpreadsheet, FileText, Layers3, PackagePlus, Settings2, Tag, Upload, X } from 'lucide-react';
 import type { Article, LabelSettings } from './lib/model';
-import { createArticle, defaultSettings, demoArticles, MAX_ARTICLES, validateArticle } from './lib/model';
+import { createArticle, defaultSettings, MAX_ARTICLES, validateArticle } from './lib/model';
 import type { ColumnMapping, ImportData } from './lib/importer';
 import './App.css';
 
@@ -13,9 +13,8 @@ const columns: { key: keyof Article; title: string; width: string }[] = [
 const freshSettings = (): LabelSettings => ({ ...defaultSettings });
 
 export default function App() {
-  const [articles, setArticles] = useState<Article[]>(() => demoArticles.map(a => ({ ...a })));
+  const [articles, setArticles] = useState<Article[]>([]);
   const [settings, setSettings] = useState<LabelSettings>(freshSettings);
-  const [isDemo, setIsDemo] = useState(true);
   const [mappingData, setMappingData] = useState<ImportData | null>(null);
   const [mapping, setMapping] = useState<ColumnMapping | null>(null);
   const [notice, setNotice] = useState('');
@@ -45,10 +44,9 @@ export default function App() {
 
   const updateArticle = (id: string, field: keyof Article, value: string) => {
     setArticles(old => old.map(row => row.id !== id ? row : ({ ...row, [field]: value })));
-    setIsDemo(false);
+
   };
-  const addRow = () => { if (articles.length >= MAX_ARTICLES) { setNotice(`Máximo ${MAX_ARTICLES.toLocaleString('es-MX')} artículos por lote.`); return; } setArticles(old => [...old, createArticle()]); setIsDemo(false); setActive('articles'); };
-  const resetDemo = () => { setArticles(demoArticles.map(a => ({ ...a }))); setIsDemo(true); setNotice('Muestra DEMO restaurada.'); };
+  const addRow = () => { if (articles.length >= MAX_ARTICLES) { setNotice(`Máximo ${MAX_ARTICLES.toLocaleString('es-MX')} artículos por lote.`); return; } setArticles(old => [...old, createArticle()]); setActive('articles'); };
   const loadFile = async (file?: File) => {
     if (!file) return;
     setBusy(true); setNotice('');
@@ -67,7 +65,7 @@ export default function App() {
     try {
       const importer = await import('./lib/importer');
       const imported = importer.mapImportRows(mappingData, mapping);
-      setArticles(imported); setIsDemo(false); setMappingData(null); setMapping(null);
+      setArticles(imported); setMappingData(null); setMapping(null);
       setNotice(`${imported.length} artículos importados correctamente.`);
     } catch (error) { setNotice(error instanceof Error ? error.message : 'No se pudieron convertir las filas.'); }
   };
@@ -111,10 +109,9 @@ export default function App() {
       {notice && <div className="notice" role="status"><span>{notice}</span><button aria-label="Cerrar aviso" onClick={() => setNotice('')}><X size={15} /></button></div>}
 
       {active === 'articles' && <section className="panel">
-        <div className="panel-heading"><div><div className="section-kicker">01 / INVENTARIO</div><h2>Artículos <span className="heading-count">{articles.length.toString().padStart(2, '0')}</span>{isDemo && <span className="demo-pill"><Sparkles size={11} /> DEMO</span>}</h2><p>Importa Excel (.xlsx) o CSV; también puedes capturar las filas manualmente.</p></div><div className="actions"><input ref={fileRef} type="file" accept=".xlsx,.csv,text/csv" hidden onChange={e => void loadFile(e.target.files?.[0])} /><button className="button button-outline" onClick={() => void downloadTemplate()}><FileSpreadsheet size={15} /> Plantilla Excel <ArrowDownToLine size={14} /></button><button className="button button-primary" onClick={() => fileRef.current?.click()} disabled={busy}><Upload size={15} /> {busy ? 'Leyendo…' : 'Cargar Excel'}</button></div></div>
-        {isDemo && <div className="demo-banner"><span className="demo-icon"><Sparkles size={16} /></span><div><strong>Estás viendo datos de ejemplo</strong><p>Revisa el flujo con 8 artículos ficticios. Carga tu Excel o descarga la plantilla para empezar con tu inventario.</p></div><button onClick={resetDemo}><RotateCcw size={14} /> Restaurar muestra</button></div>}
+        <div className="panel-heading"><div><div className="section-kicker">01 / INVENTARIO</div><h2>Artículos <span className="heading-count">{articles.length.toString().padStart(2, '0')}</span></h2><p>Importa Excel (.xlsx) o CSV; también puedes capturar las filas manualmente.</p></div><div className="actions"><input ref={fileRef} type="file" accept=".xlsx,.csv,text/csv" hidden onChange={e => void loadFile(e.target.files?.[0])} /><button className="button button-outline" onClick={() => void downloadTemplate()}><FileSpreadsheet size={15} /> Plantilla Excel <ArrowDownToLine size={14} /></button><button className="button button-primary" onClick={() => fileRef.current?.click()} disabled={busy}><Upload size={15} /> {busy ? 'Leyendo…' : 'Cargar Excel'}</button></div></div>
         <div className="table-wrap"><div className="table-scroll"><div className="inventory-table table-head" style={{ gridTemplateColumns: `42px ${columns.map(c => c.width).join(' ')} 36px` }}><span className="row-index">#</span>{columns.map(c => <span key={c.key}>{c.title}</span>)}<span /></div>
-          {articles.map((article, index) => { const errors = validateArticle(article); return <div className={`inventory-table table-row ${errors.length ? 'row-invalid' : ''}`} key={article.id} style={{ gridTemplateColumns: `42px ${columns.map(c => c.width).join(' ')} 36px` }}><span className="row-index">{String(index + 1).padStart(2, '0')}</span>{columns.map(c => <label key={c.key} className={`cell-input ${errors.some(e => (c.key === 'partNumber' && e.includes('parte')) || (c.key === 'description' && e.includes('Descripción')) || (c.key === 'location' && e.includes('locación')) || (c.key === 'date' && e.includes('Fecha'))) ? 'cell-error' : ''}`}><span className="sr-only">{c.title}</span><input aria-label={`${c.title}, fila ${index + 1}`} title={errors.join(' · ')} type={c.key === 'date' ? 'date' : 'text'} value={String(article[c.key])} onChange={e => updateArticle(article.id, c.key, e.target.value)} /></label>)}<button className="remove-row" aria-label={`Eliminar fila ${index + 1}`} onClick={() => { setArticles(old => old.filter(a => a.id !== article.id)); setIsDemo(false); }}><X size={15} /></button></div>; })}
+          {articles.map((article, index) => { const errors = validateArticle(article); return <div className={`inventory-table table-row ${errors.length ? 'row-invalid' : ''}`} key={article.id} style={{ gridTemplateColumns: `42px ${columns.map(c => c.width).join(' ')} 36px` }}><span className="row-index">{String(index + 1).padStart(2, '0')}</span>{columns.map(c => <label key={c.key} className={`cell-input ${errors.some(e => (c.key === 'partNumber' && e.includes('parte')) || (c.key === 'description' && e.includes('Descripción')) || (c.key === 'location' && e.includes('locación')) || (c.key === 'date' && e.includes('Fecha'))) ? 'cell-error' : ''}`}><span className="sr-only">{c.title}</span><input aria-label={`${c.title}, fila ${index + 1}`} title={errors.join(' · ')} type={c.key === 'date' ? 'date' : 'text'} value={String(article[c.key])} onChange={e => updateArticle(article.id, c.key, e.target.value)} /></label>)}<button className="remove-row" aria-label={`Eliminar fila ${index + 1}`} onClick={() => { setArticles(old => old.filter(a => a.id !== article.id)); }}><X size={15} /></button></div>; })}
           {!articles.length && <div className="empty-state"><PackagePlus size={25} /><strong>Tu inventario empieza aquí</strong><span>Carga una hoja Excel o añade una fila manualmente.</span></div>}
         </div></div>
         <div className="table-footer"><button className="add-row" onClick={addRow}><PackagePlus size={15} /> Añadir artículo</button><span><span className="validation-dot" /> {validCount === articles.length && articles.length ? 'Todos los artículos están listos' : `${articles.length - validCount} por revisar`} <span className="footer-divider">·</span> Los cambios se guardan en esta sesión</span></div>

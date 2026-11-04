@@ -360,7 +360,7 @@ export function mapImportRows(data: ImportData, mapping: ColumnMapping): Article
 
 function styleTemplate(worksheet: Worksheet): void {
   worksheet.views = [{ state: 'frozen', ySplit: 1 }];
-  worksheet.autoFilter = 'A1:D3';
+  worksheet.autoFilter = 'A1:D2';
   worksheet.getRow(1).height = 28;
   worksheet.getRow(1).eachCell((cell) => {
     cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
@@ -374,7 +374,7 @@ function styleTemplate(worksheet: Worksheet): void {
     };
   });
 
-  [2, 3].forEach((rowNumber) => {
+  [2].forEach((rowNumber) => {
     const row = worksheet.getRow(rowNumber);
     row.height = 22;
     row.eachCell({ includeEmpty: true }, (cell) => {
@@ -385,9 +385,6 @@ function styleTemplate(worksheet: Worksheet): void {
         bottom: { style: 'hair', color: { argb: 'FFD9E2F3' } },
         right: { style: 'hair', color: { argb: 'FFD9E2F3' } },
       };
-      if (rowNumber === 3) {
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F6FA' } };
-      }
     });
   });
 
@@ -408,18 +405,7 @@ export async function downloadExcelTemplate(): Promise<void> {
 
   const worksheet = workbook.addWorksheet('Inventario', { properties: { tabColor: { argb: 'FF1F4E78' } } });
   worksheet.addRow(['Numero de parte', 'Descripcion', 'Locacion', 'Fecha']);
-  worksheet.addRow([
-    'DEMO-001',
-    'Artículo de muestra — bolsa deportiva',
-    'A-01',
-    today(),
-  ]);
-  worksheet.addRow([
-    'DEMO-002',
-    'Artículo de muestra — caja de pelotas',
-    'A-02',
-    today(),
-  ]);
+  worksheet.addRow(['', '', '', '']);
   styleTemplate(worksheet);
 
   const workbookBuffer = await workbook.xlsx.writeBuffer();

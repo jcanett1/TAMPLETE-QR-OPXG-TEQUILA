@@ -17,3 +17,7 @@
 - [x] Ofrecer un formato de etiquetas grandes apilado verticalmente en 3 filas por hoja, siguiendo el ejemplo proporcionado.
 - [x] Permitir previsualizar todas las hojas generadas antes de imprimir o descargar.
 - [x] Exportar las plantillas seleccionadas a un documento de Word listo para impresión, respetando el formato y la distribución seleccionados.
+
+## Inventario propio
+- [x] Iniciar sin artículos ficticios ni controles DEMO, conservando carga Excel y captura manual.
+- [x] Descargar la plantilla Excel con encabezados y una fila vacía, sin productos de ejemplo.
