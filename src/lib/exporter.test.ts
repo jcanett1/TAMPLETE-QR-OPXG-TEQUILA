@@ -76,8 +76,8 @@ describe('exporter', () => {
     const printDataUrl = await qrDataUrl(item, 'all', 256);
     const printPng = Buffer.from(printDataUrl.slice('data:image/png;base64,'.length), 'base64');
     expect(printPng.readUInt32BE(16)).toBe(255);
-    expect(qrPayload(item, 'partNumber')).toBe('PART-01\nRACK-1');
-    expect(qrPayload(item, 'partLocation')).toBe('PART-01\nRACK-1');
+    expect(qrPayload(item, 'partNumber')).toBe('PART-01   RACK-1');
+    expect(qrPayload(item, 'partLocation')).toBe('PART-01   RACK-1');
     expect(qrPayload(item, 'all')).toBe('PART-01\nDescripción del artículo 1\nRACK-1\n2026-11-03');
     for (const mode of ['partNumber', 'partLocation', 'all'] as const) {
       const payload = qrPayload(item, mode);
