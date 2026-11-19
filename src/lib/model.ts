@@ -50,7 +50,7 @@ export function qrPayload(article: Article, mode: LabelSettings['qrContent']): s
   return values
     .map(value => value.replace(/[\r\n]+/g, ' ').trim())
     .filter(Boolean)
-    .join('\n');
+    .join(mode === 'all' ? '\n' : '   ');
 }
 export function pageGeometry(settings: LabelSettings) {
   const width = settings.paper === 'letter' ? 215.9 : 210;
